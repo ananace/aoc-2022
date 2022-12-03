@@ -12,6 +12,9 @@ $args = OpenStruct.new
 DAY = 0
 
 class Implementation
+  def initialize
+  end
+
   def input(line)
     raise NotImplementedError
   end
