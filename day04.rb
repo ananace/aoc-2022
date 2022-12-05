@@ -7,11 +7,13 @@ $args = OpenStruct.new
 
 module RangeExt
   def overlap?(range)
-    to_a.any? { |num| range.to_a.include? num }
+    include?(range.first) || include?(range.last) || \
+      range.include?(first) || range.include?(last)
   end
 
   def fully_contain?(range)
-    first <= range.first && last >= range.last
+    (include?(range.first) && include?(range.last)) || \
+      (range.include?(first) && range.include?(last))
   end
 end
 
