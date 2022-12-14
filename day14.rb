@@ -87,43 +87,7 @@ class Implementation
 
     show map
 
-    step = 0
-    while true do
-      sand = Point.new(500, 0)
-      step = step + 1 
-      rest = false
-
-      while true
-        np = sand + Point.new(0, 1)
-        break unless @world.include?(np) 
-        v = get(np.x, np.y, map, tl: tl) 
-        # puts "At #{np} (#{v})"
-        if v
-          t = np + Point.new(-1, 0)
-          break unless @world.include?(t) 
-          # puts "Checking #{t}"
-          if get(t.x, t.y, map, tl: tl)
-            t.x += 2
-            break unless @world.include?(t) 
-            # puts "Checking #{t}"
-            if get(t.x, t.y, map, tl: tl)
-              set(sand.x, sand.y, 'o', map, tl: tl)
-              rest = true
-              break
-            else
-              np = t
-            end
-          else
-            np = t
-          end
-        end
-        sand = np
-      end
-
-      # puts "Step #{step}"
-      # show map
-      break unless rest
-    end
+    step = drop_sand map, @world
 
     puts "Escaping world at step #{step}"
     show map
@@ -146,42 +110,7 @@ class Implementation
     add_lines(map, @lines, tl)
     show map
 
-    step = 0
-    while true do
-      sand = Point.new(500, 0)
-      step = step + 1 
-      rest = false
-
-      while true
-        np = sand + Point.new(0, 1)
-        break unless @world.include?(np) 
-        v = get(np.x, np.y, map, tl: tl) 
-        # puts "At #{np} (#{v})"
-        if v
-          t = np + Point.new(-1, 0)
-          break unless @world.include?(t) 
-          # puts "Checking #{t}"
-          if get(t.x, t.y, map, tl: tl)
-            t.x += 2
-            break unless @world.include?(t) 
-            # puts "Checking #{t}"
-            if get(t.x, t.y, map, tl: tl)
-              set(sand.x, sand.y, 'o', map, tl: tl)
-              rest = true
-              break
-            else
-              np = t
-            end
-          else
-            np = t
-          end
-        end
-        sand = np
-      end
-
-      break if sand == Point.new(500, 0)
-      break unless rest
-    end
+    step = drop_sand map, world
 
     puts "Reaching top at step #{step}"
     show map
@@ -215,6 +144,48 @@ class Implementation
         point = segment
       end
     end
+  end
+
+  def drop_sand(map, world)
+    tl = world.tl
+    step = 0
+    while true do
+      sand = Point.new(500, 0)
+      step = step + 1 
+      rest = false
+
+      while true
+        np = sand + Point.new(0, 1)
+        break unless world.include?(np) 
+        v = get(np.x, np.y, map, tl: tl) 
+        # puts "At #{np} (#{v})"
+        if v
+          t = np + Point.new(-1, 0)
+          break unless world.include?(t) 
+          # puts "Checking #{t}"
+          if get(t.x, t.y, map, tl: tl)
+            t.x += 2
+            break unless world.include?(t) 
+            # puts "Checking #{t}"
+            if get(t.x, t.y, map, tl: tl)
+              set(sand.x, sand.y, 'o', map, tl: tl)
+              rest = true
+              break
+            else
+              np = t
+            end
+          else
+            np = t
+          end
+        end
+        sand = np
+      end
+
+      break if sand == Point.new(500, 0)
+      break unless rest
+    end
+
+    step
   end
 
   def get(x, y, map, tl: nil)
