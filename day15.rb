@@ -98,15 +98,19 @@ class Implementation
     print "Scanning for Part 2... (000%)"
 
     last = []
-    (0..(to_check * 2)).each do |y|
-      potentials = @sensors.select { |s| s.in_range? Point.new(s.x, y) }
+    (0..(to_check * 2)).each do |i|
+      # Scan from middle out, to optimize for the majority case
+      # (only the first quarter of the input data is closer to the top than the middle)
+      y = to_check + (i % 2 == 0 ? i : -i)/2
 
-      ranges = potentials.map do |s|
-        w = (s.range - (s.y - y).abs)
+      ranges = @sensors.map do |s|
+        next unless s.in_range? Point.new(s.x, y)
 
+        w = s.range - (s.y - y).abs
         (s.x - w)..(s.x + w)
-      end
+      end.reject(&:nil?)
       next if last == ranges
+
       last = ranges
 
       # Scan through the collected ranges in both directions
@@ -124,13 +128,13 @@ class Implementation
 
       if Time.now - r > 1
         r = Time.now
-        print "\b" * 6 + "(#{'%03i' % ((y.to_f / (to_check * 2.0)) * 100).to_i}%)"
+        print "\b" * 6 + "(#{'%03i' % ((i.to_f / (to_check * 2.0)) * 100).to_i}%)"
       end
 
       # If the scan overlaps, then there's no empty spaces on the line
       next if narrowing.last < narrowing.first
-      narrowing = Range.new *narrowing
 
+      narrowing = Range.new *narrowing
       narrowing.each do |x|
         p = Point.new(x, y)
         
