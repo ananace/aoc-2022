@@ -27,11 +27,7 @@ PathNode = Struct.new :name, :parent do
     parent.full_path + [name]
   end
 end
-Action = Struct.new :target, :distance do
-  def busy?
-    distance > 0
-  end
-end
+Actor = Struct.new :at, :time, :pressure, :open
 
 class Implementation
   def initialize
@@ -47,13 +43,12 @@ class Implementation
   def output
     at = 'AA'
     minutes = 30
-    pressure = 0
 
-    # puts "Graph complexity; #{graph.map { |_, v| v.size }.avg}"
+    start = Actor.new at, 0, 0, Set.new(['AA'])
 
     puts "Calculating potential solutions... (Will take a while)"
-    puts "Part 1: #{calc_potential(Action.new('AA', 0), Set.new, 0, 30)}"
-    puts "Part 2: #{calc_potential_friend(Action.new('AA', 0), Action.new('AA', 0), Set.new, 0, 26)}"
+    puts "Part 1: #{calc_potential(start, minutes)}"
+    puts "Part 2: #{calc_potential_friend(start, minutes - 4)}"
   end
 
   def graph
@@ -63,92 +58,50 @@ class Implementation
       (@valves.reject { |_, flow| flow.zero? }.map(&:first) + ['AA']).each do |v|
         g[v] = (@valves.reject { |_, flow| flow.zero? }.map(&:first) + ['AA']).map do |v2|
           [v2, find_path(v, v2).size]
-        end
+        end.sort_by(&:last).to_h
       end
       g
     end
   end
 
-  # RRT-like recursive potential calculation
-  def calc_potential(you, open, pressure, minutes)
-    return pressure if minutes == 0
-    while you.busy?
-      you.distance -= 1
-      minutes -= 1
+  # RRT-like imperative potential calculation
+  def calc_potential(actor, minutes, graph: self.graph)
+    max_pressure = 0
+
+    potentials = [actor]
+    until potentials.empty?
+      potential = potentials.shift
+
+      (graph.keys - potential.open.to_a).each do |valve|
+        dist = graph[potential.at][valve]
+        next if dist >= minutes - potential.time
+
+        new = potential.dup.tap do |new|
+          new.at = valve
+          new.pressure += @valves[valve] * (minutes - new.time - dist)
+          new.time += dist
+          new.open = new.open + [valve]
+        end
+        potentials << new
+        max_pressure = new.pressure if new.pressure > max_pressure
+      end
     end
 
-    best = pressure
-
-    for link, dist in graph[you.target]
-      next if open.include? link
-      next if dist >= minutes
-
-      res = calc_potential(
-        Action.new(link, dist),
-        open + [link],
-        pressure + @valves[link] * (minutes - dist),
-        minutes
-      )
-
-      best = res if res > best
-    end
-
-    best
+    max_pressure
   end
 
-  # XXX Should be reasonably simple to thread this for a good performance boost
-  def calc_potential_friend(you, elephant, open, pressure, minutes)
-    return pressure if minutes == 0
-    # Both of you are busy moving
-    while you.busy? && elephant.busy?
-      you.distance -= 1
-      elephant.distance -= 1
-      minutes -= 1
+  def calc_potential_friend(actor, minutes)
+    max_pressure = 0
+
+    valves = graph.keys.reject { |k| k == 'AA' }
+    valves.combination(valves.size / 2) do |permutation|
+      val = calc_potential(actor, minutes, graph: graph.select { |k, _| permutation.include?(k) || k == 'AA' }) +
+            calc_potential(actor, minutes, graph: graph.select { |k, _| !permutation.include?(k) || k == 'AA' })
+
+      max_pressure = val if val > max_pressure
     end
 
-    best = pressure
-
-    # You are able to perform an action
-    unless you.busy?
-      moving = false
-      for link, dist in graph[you.target]
-        next if open.include? link
-        next if dist >= minutes
-
-        moving = true
-        res = calc_potential_friend(
-          Action.new(link, dist),
-          elephant.dup,
-          open + [link],
-          pressure + @valves[link] * (minutes - dist),
-          minutes
-        )
-
-        best = res if res > best
-      end
-
-      return best if moving
-    end
-
-    # The elephant is able to perform an action
-    unless elephant.busy?
-      for link, dist in graph[elephant.target]
-        next if open.include? link
-        next if dist >= minutes
-
-        res = calc_potential_friend(
-          you.dup,
-          Action.new(link, dist),
-          open + [link],
-          pressure + @valves[link] * (minutes - dist),
-          minutes
-        )
-
-        best = res if res > best
-      end
-    end
-
-    best
+    max_pressure
   end
 
   # Flood-fill pathfinding, copied from day 12
